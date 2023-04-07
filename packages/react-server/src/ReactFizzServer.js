@@ -1224,7 +1224,6 @@ function renderElement(
       }
       throw new Error('ReactDOMServer does not yet support scope components.');
     }
-    // eslint-disable-next-line-no-fallthrough
     case REACT_SUSPENSE_TYPE: {
       if (
         enableSuspenseAvoidThisFallbackFizz &&
@@ -1292,7 +1291,6 @@ function validateIterable(iterable, iteratorFn: Function): void {
     // See https://github.com/facebook/react/issues/12995
     if (
       typeof Symbol === 'function' &&
-      // $FlowFixMe Flow doesn't know about toStringTag
       iterable[Symbol.toStringTag] === 'Generator'
     ) {
       if (!didWarnAboutGenerators) {
@@ -1380,7 +1378,6 @@ function renderNodeDestructiveImpl(
           'Portals are not currently supported by the server renderer. ' +
             'Render them conditionally so that they only appear on the client render.',
         );
-      // eslint-disable-next-line-no-fallthrough
       case REACT_LAZY_TYPE: {
         const lazyNode: LazyComponentType<any, any> = (node: any);
         const payload = lazyNode._payload;

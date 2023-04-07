@@ -68,6 +68,11 @@ export const getInstanceFromScope = $$$hostConfig.getInstanceFromScope;
 export const getCurrentEventPriority = $$$hostConfig.getCurrentEventPriority;
 export const detachDeletedInstance = $$$hostConfig.detachDeletedInstance;
 export const requestPostPaintCallback = $$$hostConfig.requestPostPaintCallback;
+export const maySuspendCommit = $$$hostConfig.maySuspendCommit;
+export const preloadInstance = $$$hostConfig.preloadInstance;
+export const startSuspendingCommit = $$$hostConfig.startSuspendingCommit;
+export const suspendInstance = $$$hostConfig.suspendInstance;
+export const waitForCommitToBeReady = $$$hostConfig.waitForCommitToBeReady;
 export const prepareRendererToRender = $$$hostConfig.prepareRendererToRender;
 export const resetRendererAfterRender = $$$hostConfig.resetRendererAfterRender;
 
@@ -203,6 +208,7 @@ export const errorHydratingContainer = $$$hostConfig.errorHydratingContainer;
 //     (optional)
 // -------------------
 export type HoistableRoot = mixed;
+export type Resource = mixed; // eslint-disable-line no-undef
 export const supportsResources = $$$hostConfig.supportsResources;
 export const isHostHoistableType = $$$hostConfig.isHostHoistableType;
 export const getHoistableRoot = $$$hostConfig.getHoistableRoot;
@@ -215,6 +221,9 @@ export const unmountHoistable = $$$hostConfig.unmountHoistable;
 export const createHoistableInstance = $$$hostConfig.createHoistableInstance;
 export const prepareToCommitHoistables =
   $$$hostConfig.prepareToCommitHoistables;
+export const mayResourceSuspendCommit = $$$hostConfig.mayResourceSuspendCommit;
+export const preloadResource = $$$hostConfig.preloadResource;
+export const suspendResource = $$$hostConfig.suspendResource;
 
 // -------------------
 //     Singletons

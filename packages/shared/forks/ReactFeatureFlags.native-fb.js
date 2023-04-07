@@ -17,7 +17,8 @@ import * as dynamicFlags from 'ReactNativeInternalFeatureFlags';
 
 // We destructure each value before re-exporting to avoid a dynamic look-up on
 // the exports object every time a flag is read.
-export const {enableUseRefAccessWarning} = dynamicFlags;
+export const {enableUseRefAccessWarning, enableDeferRootSchedulingToMicrotask} =
+  dynamicFlags;
 
 // The rest of the flags are static for better dead code elimination.
 export const enableDebugTracing = false;
@@ -42,7 +43,7 @@ export const enableScopeAPI = false;
 export const enableCreateEventHandleAPI = false;
 export const enableSuspenseCallback = false;
 export const disableLegacyContext = false;
-export const disableSchedulerTimeoutBasedOnReactExpirationTime = false;
+export const revertRemovalOfSiblingPrerendering = false;
 export const enableTrustedTypesIntegration = false;
 export const disableTextareaChildren = false;
 export const disableModulePatternComponents = false;
@@ -52,22 +53,18 @@ export const enableCPUSuspense = true;
 export const enableUseHook = true;
 export const enableUseMemoCacheHook = true;
 export const enableUseEffectEventHook = false;
-export const enableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay =
-  true;
 export const enableClientRenderFallbackOnTextMismatch = true;
 export const enableComponentStackLocations = false;
 export const enableLegacyFBSupport = false;
 export const enableFilterEmptyStringAttributesDOM = false;
-export const disableNativeComponentFrames = false;
-export const skipUnmountedBoundaries = false;
 export const enableGetInspectorDataForInstanceInProduction = true;
-export const deferRenderPhaseUpdateToNextBatch = false;
 
 export const createRootStrictEffectsByDefault = false;
 
 export const disableSchedulerTimeoutInWorkLoop = false;
 export const enableLazyContextPropagation = false;
 export const enableLegacyHidden = true;
+export const enableSyncDefaultUpdates = true;
 export const enableUnifiedSyncLane = false;
 export const allowConcurrentByDefault = true;
 export const enableCustomElementPropertySupport = false;

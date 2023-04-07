@@ -7,9 +7,10 @@
 
 import {shorthandToLonghand} from './CSSShorthandProperty';
 
-import dangerousStyleValue from './dangerousStyleValue';
 import hyphenateStyleName from '../shared/hyphenateStyleName';
 import warnValidStyle from '../shared/warnValidStyle';
+import isUnitlessNumber from '../shared/isUnitlessNumber';
+import {checkCSSPropertyStringCoercion} from 'shared/CheckStringCoercion';
 
 /**
  * Operations for dealing with CSS properties.
@@ -29,19 +30,33 @@ export function createDangerousStringForStyles(styles) {
       if (!styles.hasOwnProperty(styleName)) {
         continue;
       }
-      const styleValue = styles[styleName];
-      if (styleValue != null) {
+      const value = styles[styleName];
+      if (value != null && typeof value !== 'boolean' && value !== '') {
         const isCustomProperty = styleName.indexOf('--') === 0;
-        serialized +=
-          delimiter +
-          (isCustomProperty ? styleName : hyphenateStyleName(styleName)) +
-          ':';
-        serialized += dangerousStyleValue(
-          styleName,
-          styleValue,
-          isCustomProperty,
-        );
-
+        if (isCustomProperty) {
+          if (__DEV__) {
+            checkCSSPropertyStringCoercion(value, styleName);
+          }
+          serialized += delimiter + styleName + ':' + ('' + value).trim();
+        } else {
+          if (
+            typeof value === 'number' &&
+            value !== 0 &&
+            !isUnitlessNumber(styleName)
+          ) {
+            serialized +=
+              delimiter + hyphenateStyleName(styleName) + ':' + value + 'px';
+          } else {
+            if (__DEV__) {
+              checkCSSPropertyStringCoercion(value, styleName);
+            }
+            serialized +=
+              delimiter +
+              hyphenateStyleName(styleName) +
+              ':' +
+              ('' + value).trim();
+          }
+        }
         delimiter = ';';
       }
     }
@@ -57,29 +72,59 @@ export function createDangerousStringForStyles(styles) {
  * @param {object} styles
  */
 export function setValueForStyles(node, styles) {
+  if (styles != null && typeof styles !== 'object') {
+    throw new Error(
+      'The `style` prop expects a mapping from style properties to values, ' +
+        "not a string. For example, style={{marginRight: spacing + 'em'}} when " +
+        'using JSX.',
+    );
+  }
+  if (__DEV__) {
+    if (styles) {
+      // Freeze the next style object so that we can assume it won't be
+      // mutated. We have already warned for this in the past.
+      Object.freeze(styles);
+    }
+  }
+
   const style = node.style;
-  for (let styleName in styles) {
+  for (const styleName in styles) {
     if (!styles.hasOwnProperty(styleName)) {
       continue;
     }
+    const value = styles[styleName];
     const isCustomProperty = styleName.indexOf('--') === 0;
     if (__DEV__) {
       if (!isCustomProperty) {
-        warnValidStyle(styleName, styles[styleName]);
+        warnValidStyle(styleName, value);
       }
     }
-    const styleValue = dangerousStyleValue(
-      styleName,
-      styles[styleName],
-      isCustomProperty,
-    );
-    if (styleName === 'float') {
-      styleName = 'cssFloat';
-    }
-    if (isCustomProperty) {
-      style.setProperty(styleName, styleValue);
+
+    if (value == null || typeof value === 'boolean' || value === '') {
+      if (isCustomProperty) {
+        style.setProperty(styleName, '');
+      } else if (styleName === 'float') {
+        style.cssFloat = '';
+      } else {
+        style[styleName] = '';
+      }
+    } else if (isCustomProperty) {
+      style.setProperty(styleName, value);
+    } else if (
+      typeof value === 'number' &&
+      value !== 0 &&
+      !isUnitlessNumber(styleName)
+    ) {
+      style[styleName] = value + 'px'; // Presumes implicit 'px' suffix for unitless numbers
     } else {
-      style[styleName] = styleValue;
+      if (styleName === 'float') {
+        style.cssFloat = value;
+      } else {
+        if (__DEV__) {
+          checkCSSPropertyStringCoercion(value, styleName);
+        }
+        style[styleName] = ('' + value).trim();
+      }
     }
   }
 }

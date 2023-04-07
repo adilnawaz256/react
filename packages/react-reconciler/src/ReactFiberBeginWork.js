@@ -1168,17 +1168,12 @@ export function replayFunctionComponent(
   workInProgress: Fiber,
   nextProps: any,
   Component: any,
+  secondArg: any,
   renderLanes: Lanes,
 ): Fiber | null {
   // This function is used to replay a component that previously suspended,
   // after its data resolves. It's a simplified version of
   // updateFunctionComponent that reuses the hooks from the previous attempt.
-
-  let context;
-  if (!disableLegacyContext) {
-    const unmaskedContext = getUnmaskedContext(workInProgress, Component, true);
-    context = getMaskedContext(workInProgress, unmaskedContext);
-  }
 
   prepareToReadContext(workInProgress, renderLanes);
   if (enableSchedulingProfiler) {
@@ -1189,7 +1184,7 @@ export function replayFunctionComponent(
     workInProgress,
     Component,
     nextProps,
-    context,
+    secondArg,
   );
   const hasId = checkDidRenderIdHook();
   if (enableSchedulingProfiler) {
@@ -2167,6 +2162,8 @@ function shouldRemainOnFallback(
   // If we're already showing a fallback, there are cases where we need to
   // remain on that fallback regardless of whether the content has resolved.
   // For example, SuspenseList coordinates when nested content appears.
+  // TODO: For compatibility with offscreen prerendering, this should also check
+  // whether the current fiber (if it exists) was visible in the previous tree.
   if (current !== null) {
     const suspenseState: SuspenseState = current.memoizedState;
     if (suspenseState === null) {
@@ -2298,7 +2295,7 @@ function updateSuspenseComponent(
             const newOffscreenQueue: OffscreenQueue = {
               transitions: currentTransitions,
               markerInstances: parentMarkerInstances,
-              wakeables: null,
+              retryQueue: null,
             };
             primaryChildFragment.updateQueue = newOffscreenQueue;
           } else {
@@ -2399,7 +2396,7 @@ function updateSuspenseComponent(
             const newOffscreenQueue: OffscreenQueue = {
               transitions: currentTransitions,
               markerInstances: parentMarkerInstances,
-              wakeables: null,
+              retryQueue: null,
             };
             primaryChildFragment.updateQueue = newOffscreenQueue;
           } else if (offscreenQueue === currentOffscreenQueue) {
@@ -2408,9 +2405,9 @@ function updateSuspenseComponent(
             const newOffscreenQueue: OffscreenQueue = {
               transitions: currentTransitions,
               markerInstances: parentMarkerInstances,
-              wakeables:
+              retryQueue:
                 currentOffscreenQueue !== null
-                  ? currentOffscreenQueue.wakeables
+                  ? currentOffscreenQueue.retryQueue
                   : null,
             };
             primaryChildFragment.updateQueue = newOffscreenQueue;
@@ -4099,12 +4096,12 @@ function beginWork(
       if (enableFloat && supportsResources) {
         return updateHostHoistable(current, workInProgress, renderLanes);
       }
-    // eslint-disable-next-line no-fallthrough
+    // Fall through
     case HostSingleton:
       if (enableHostSingletons && supportsSingletons) {
         return updateHostSingleton(current, workInProgress, renderLanes);
       }
-    // eslint-disable-next-line no-fallthrough
+    // Fall through
     case HostComponent:
       return updateHostComponent(current, workInProgress, renderLanes);
     case HostText:

@@ -10,25 +10,27 @@
 // TODO: direct imports like some-package/src/* are bad. Fix me.
 import {getCurrentFiberOwnerNameInDevOrNull} from 'react-reconciler/src/ReactCurrentFiber';
 
-import {setValueForProperty} from './DOMPropertyOperations';
 import {getFiberCurrentPropsFromNode} from './ReactDOMComponentTree';
 import {getToStringValue, toString} from './ToStringValue';
 import {checkControlledValueProps} from '../shared/ReactControlledValuePropTypes';
 import {updateValueIfChanged} from './inputValueTracking';
 import getActiveElement from './getActiveElement';
-import assign from 'shared/assign';
 import {disableInputAttributeSyncing} from 'shared/ReactFeatureFlags';
 import {checkAttributeStringCoercion} from 'shared/CheckStringCoercion';
 
 import type {ToStringValue} from './ToStringValue';
 
-type InputWithWrapperState = HTMLInputElement & {
+export type InputWithWrapperState = HTMLInputElement & {
   _wrapperState: {
     initialValue: ToStringValue,
     initialChecked: ?boolean,
     controlled?: boolean,
     ...
   },
+  checked: boolean,
+  value: string,
+  defaultChecked: boolean,
+  defaultValue: string,
   ...
 };
 
@@ -58,20 +60,6 @@ function isControlled(props: any) {
  *
  * See http://www.w3.org/TR/2012/WD-html5-20121025/the-input-element.html
  */
-
-export function getHostProps(element: Element, props: Object): Object {
-  const node = ((element: any): InputWithWrapperState);
-  const checked = props.checked;
-
-  const hostProps = assign({}, props, {
-    defaultChecked: undefined,
-    defaultValue: undefined,
-    value: undefined,
-    checked: checked != null ? checked : node._wrapperState.initialChecked,
-  });
-
-  return hostProps;
-}
 
 export function initWrapperState(element: Element, props: Object) {
   if (__DEV__) {
@@ -115,10 +103,13 @@ export function initWrapperState(element: Element, props: Object) {
 
   const node = ((element: any): InputWithWrapperState);
   const defaultValue = props.defaultValue == null ? '' : props.defaultValue;
-
+  const initialChecked =
+    props.checked != null ? props.checked : props.defaultChecked;
   node._wrapperState = {
     initialChecked:
-      props.checked != null ? props.checked : props.defaultChecked,
+      typeof initialChecked !== 'function' &&
+      typeof initialChecked !== 'symbol' &&
+      !!initialChecked,
     initialValue: getToStringValue(
       props.value != null ? props.value : defaultValue,
     ),
@@ -130,7 +121,7 @@ export function updateChecked(element: Element, props: Object) {
   const node = ((element: any): InputWithWrapperState);
   const checked = props.checked;
   if (checked != null) {
-    setValueForProperty(node, 'checked', checked, false);
+    node.checked = checked;
   }
 }
 
@@ -313,15 +304,16 @@ export function postMountWrapper(
     node.name = '';
   }
 
-  if (disableInputAttributeSyncing) {
-    // When not syncing the checked attribute, the checked property
-    // never gets assigned. It must be manually set. We don't want
-    // to do this when hydrating so that existing user input isn't
-    // modified
-    if (!isHydrating) {
-      updateChecked(element, props);
-    }
+  // The checked property never gets assigned. It must be manually set.
+  // We don't want to do this when hydrating so that existing user input isn't
+  // modified
+  // TODO: I'm pretty sure this is a bug because initialValueTracking won't be
+  // correct for the hydration case then.
+  if (!isHydrating) {
+    node.checked = !!node._wrapperState.initialChecked;
+  }
 
+  if (disableInputAttributeSyncing) {
     // Only assign the checked attribute if it is defined. This saves
     // a DOM write when controlling the checked attribute isn't needed
     // (text inputs, submit/reset)

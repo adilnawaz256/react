@@ -7,6 +7,7 @@ import {IS_FIREFOX} from './utils';
 const ports = {};
 
 if (!IS_FIREFOX) {
+  // equivalent logic for Firefox is in prepareInjection.js
   // Manifest V3 method of injecting content scripts (not yet supported in Firefox)
   // Note: the "world" option in registerContentScripts is only available in Chrome v102+
   // It's critical since it allows us to directly run scripts on the "main" world on the page
@@ -18,6 +19,13 @@ if (!IS_FIREFOX) {
         id: 'hook',
         matches: ['<all_urls>'],
         js: ['build/installHook.js'],
+        runAt: 'document_start',
+        world: chrome.scripting.ExecutionWorld.MAIN,
+      },
+      {
+        id: 'renderer',
+        matches: ['<all_urls>'],
+        js: ['build/renderer.js'],
         runAt: 'document_start',
         world: chrome.scripting.ExecutionWorld.MAIN,
       },
@@ -180,6 +188,19 @@ chrome.runtime.onMessage.addListener((request, sender) => {
             devtools.postMessage(request);
           }
           break;
+      }
+    }
+  } else if (request.payload?.tabId) {
+    const tabId = request.payload?.tabId;
+    // This is sent from the devtools page when it is ready for injecting the backend
+    if (request.payload.type === 'react-devtools-inject-backend') {
+      if (!IS_FIREFOX) {
+        // equivalent logic for Firefox is in prepareInjection.js
+        chrome.scripting.executeScript({
+          target: {tabId},
+          files: ['/build/react_devtools_backend.js'],
+          world: chrome.scripting.ExecutionWorld.MAIN,
+        });
       }
     }
   }

@@ -227,6 +227,10 @@ type BaseFiberRootProperties = {
   // Timeout handle returned by setTimeout. Used to cancel a pending timeout, if
   // it's superseded by a new one.
   timeoutHandle: TimeoutHandle | NoTimeout,
+  // When a root has a pending commit scheduled, calling this function will
+  // cancel it.
+  // TODO: Can this be consolidated with timeoutHandle?
+  cancelPendingCommit: null | (() => void),
   // Top context object, used by renderSubtreeIntoContainer
   context: Object | null,
   pendingContext: Object | null,
@@ -235,6 +239,10 @@ type BaseFiberRootProperties = {
   mutableSourceEagerHydrationData?: Array<
     MutableSource<any> | MutableSourceVersion,
   > | null,
+
+  // Used to create a linked list that represent all the roots that have
+  // pending work scheduled on them.
+  next: FiberRoot | null,
 
   // Node returned by Scheduler.scheduleCallback. Represents the next rendering
   // task that the root will work on.
@@ -379,9 +387,7 @@ export type Dispatcher = {
     create: () => (() => void) | void,
     deps: Array<mixed> | void | null,
   ): void,
-  useEffectEvent?: <Args, Return, F: (...Array<Args>) => Return>(
-    callback: F,
-  ) => F,
+  useEffectEvent?: <Args, F: (...Array<Args>) => mixed>(callback: F) => F,
   useInsertionEffect(
     create: () => (() => void) | void,
     deps: Array<mixed> | void | null,

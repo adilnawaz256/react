@@ -266,7 +266,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
         'App render',
         'Text:Inside:Before render',
         'Suspend:Async',
-        'ClassText:Inside:After render',
         'Text:Fallback render',
         'Text:Outside render',
         'Text:Fallback create layout',
@@ -577,7 +576,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       ]);
     });
 
-    // @gate enableLegacyCache
+    // @gate enableLegacyCache && enableSyncDefaultUpdates
     it('should be destroyed and recreated for function components', async () => {
       function App({children = null}) {
         Scheduler.log('App render');
@@ -641,7 +640,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
           'App render',
           'Text:Inside:Before render',
           'Suspend:Async',
-          'Text:Inside:After render',
           'Text:Fallback render',
           'Text:Outside render',
         ]);
@@ -713,7 +711,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       ]);
     });
 
-    // @gate enableLegacyCache
+    // @gate enableLegacyCache && enableSyncDefaultUpdates
     it('should be destroyed and recreated for class components', async () => {
       class ClassText extends React.Component {
         componentDidMount() {
@@ -796,7 +794,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
           'App render',
           'ClassText:Inside:Before render',
           'Suspend:Async',
-          'ClassText:Inside:After render',
           'ClassText:Fallback render',
           'ClassText:Outside render',
         ]);
@@ -863,7 +860,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       ]);
     });
 
-    // @gate enableLegacyCache
+    // @gate enableLegacyCache && enableSyncDefaultUpdates
     it('should be destroyed and recreated when nested below host components', async () => {
       function App({children = null}) {
         Scheduler.log('App render');
@@ -917,13 +914,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
             <AsyncText text="Async" ms={1000} />
           </App>,
         );
-        await waitFor([
-          'App render',
-          'Suspend:Async',
-          'Text:Outer render',
-          'Text:Inner render',
-          'Text:Fallback render',
-        ]);
+        await waitFor(['App render', 'Suspend:Async', 'Text:Fallback render']);
         expect(ReactNoop).toMatchRenderedOutput(
           <span prop="Outer">
             <span prop="Inner" />
@@ -988,7 +979,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       ]);
     });
 
-    // @gate enableLegacyCache
+    // @gate enableLegacyCache && enableSyncDefaultUpdates
     it('should be destroyed and recreated even if there is a bailout because of memoization', async () => {
       const MemoizedText = React.memo(Text, () => true);
 
@@ -1047,7 +1038,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
         await waitFor([
           'App render',
           'Suspend:Async',
-          'Text:Outer render',
           // Text:MemoizedInner is memoized
           'Text:Fallback render',
         ]);
@@ -1186,9 +1176,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
       assertLog([
         'Text:Outer render',
         'Suspend:OuterAsync_1',
-        'Text:Inner render',
-        'Suspend:InnerAsync_1',
-        'Text:InnerFallback render',
         'Text:OuterFallback render',
         'Text:Outer destroy layout',
         'Text:InnerFallback destroy layout',
@@ -1208,12 +1195,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       await act(async () => {
         await resolveText('InnerAsync_1');
       });
-      assertLog([
-        'Text:Outer render',
-        'Suspend:OuterAsync_1',
-        'Text:Inner render',
-        'AsyncText:InnerAsync_1 render',
-      ]);
+      assertLog(['Text:Outer render', 'Suspend:OuterAsync_1']);
       expect(ReactNoop).toMatchRenderedOutput(
         <>
           <span prop="Outer" hidden={true} />
@@ -1236,9 +1218,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
       assertLog([
         'Text:Outer render',
         'Suspend:OuterAsync_1',
-        'Text:Inner render',
-        'Suspend:InnerAsync_2',
-        'Text:InnerFallback render',
         'Text:OuterFallback render',
       ]);
       expect(ReactNoop).toMatchRenderedOutput(
@@ -1310,8 +1289,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
       assertLog([
         'Text:Outer render',
         'Suspend:OuterAsync_2',
-        'Text:Inner render',
-        'AsyncText:InnerAsync_2 render',
         'Text:OuterFallback render',
         'Text:Outer destroy layout',
         'AsyncText:OuterAsync_1 destroy layout',
@@ -1426,9 +1403,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
       assertLog([
         'Text:Outer render',
         'Suspend:OuterAsync_1',
-        'Text:Inner render',
-        'Suspend:InnerAsync_1',
-        'Text:InnerFallback render',
         'Text:OuterFallback render',
         'Text:Outer destroy layout',
         'Text:InnerFallback destroy layout',
@@ -1474,7 +1448,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       );
     });
 
-    // @gate enableLegacyCache
+    // @gate enableLegacyCache && enableSyncDefaultUpdates
     it('should be cleaned up inside of a fallback that suspends', async () => {
       function App({fallbackChildren = null, outerChildren = null}) {
         return (
@@ -1750,7 +1724,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       );
     });
 
-    // @gate enableLegacyCache
+    // @gate enableLegacyCache && enableSyncDefaultUpdates
     it('should be cleaned up deeper inside of a subtree that suspends', async () => {
       function ConditionalSuspense({shouldSuspend}) {
         if (shouldSuspend) {
@@ -1922,8 +1896,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
           'ErrorBoundary render: try',
           'App render',
           'Suspend:Async',
-          'ThrowsInDidMount render',
-          'Text:Inside render',
           'Text:Fallback render',
           'Text:Outside render',
           'ThrowsInDidMount componentWillUnmount',
@@ -2058,8 +2030,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
           'ErrorBoundary render: try',
           'App render',
           'Suspend:Async',
-          'ThrowsInWillUnmount render',
-          'Text:Inside render',
           'Text:Fallback render',
           'Text:Outside render',
 
@@ -2170,8 +2140,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
           'ErrorBoundary render: try',
           'App render',
           'Suspend:Async',
-          'ThrowsInLayoutEffect render',
-          'Text:Inside render',
           'Text:Fallback render',
           'Text:Outside render',
           'ThrowsInLayoutEffect useLayoutEffect destroy',
@@ -2307,8 +2275,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
           'ErrorBoundary render: try',
           'App render',
           'Suspend:Async',
-          'ThrowsInLayoutEffectDestroy render',
-          'Text:Inside render',
           'Text:Fallback render',
           'Text:Outside render',
 
@@ -2339,7 +2305,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       });
     });
 
-    // @gate enableLegacyCache
+    // @gate enableLegacyCache && enableSyncDefaultUpdates
     it('should be only destroy layout effects once if a tree suspends in multiple places', async () => {
       class ClassText extends React.Component {
         componentDidMount() {
@@ -2399,8 +2365,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
         await waitFor([
           'Text:Function render',
           'Suspend:Async_1',
-          'Suspend:Async_2',
-          'ClassText:Class render',
           'ClassText:Fallback render',
         ]);
         expect(ReactNoop).toMatchRenderedOutput(
@@ -2435,7 +2399,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
         'Text:Function render',
         'AsyncText:Async_1 render',
         'Suspend:Async_2',
-        'ClassText:Class render',
       ]);
       expect(ReactNoop).toMatchRenderedOutput(
         <>
@@ -2485,7 +2448,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       ]);
     });
 
-    // @gate enableLegacyCache
+    // @gate enableLegacyCache && enableSyncDefaultUpdates
     it('should be only destroy layout effects once if a component suspends multiple times', async () => {
       class ClassText extends React.Component {
         componentDidMount() {
@@ -2554,7 +2517,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
           'Text:Function render',
           'Suspender "A" render',
           'Suspend:A',
-          'ClassText:Class render',
           'ClassText:Fallback render',
         ]);
         expect(ReactNoop).toMatchRenderedOutput(
@@ -2588,12 +2550,7 @@ describe('ReactSuspenseEffectsSemantics', () => {
       await act(async () => {
         await resolveText('A');
       });
-      assertLog([
-        'Text:Function render',
-        'Suspender "B" render',
-        'Suspend:B',
-        'ClassText:Class render',
-      ]);
+      assertLog(['Text:Function render', 'Suspender "B" render', 'Suspend:B']);
       expect(ReactNoop).toMatchRenderedOutput(
         <>
           <span prop="Function" hidden={true} />
@@ -2819,9 +2776,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
       assertLog([
         'App render',
         'Suspend:Async',
-        'RefCheckerOuter render',
-        'RefCheckerInner:refObject render',
-        'RefCheckerInner:refCallback render',
         'Text:Fallback render',
         'RefCheckerOuter destroy layout refObject? true refCallback? true',
         'RefCheckerInner:refObject destroy layout ref? false',
@@ -2925,11 +2879,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
       assertLog([
         'App render',
         'Suspend:Async',
-        'RefCheckerOuter render',
-        'ClassComponent:refObject render',
-        'RefCheckerInner:refObject render',
-        'ClassComponent:refCallback render',
-        'RefCheckerInner:refCallback render',
         'Text:Fallback render',
         'RefCheckerOuter destroy layout refObject? true refCallback? true',
         'RefCheckerInner:refObject destroy layout ref? false',
@@ -3029,11 +2978,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
       assertLog([
         'App render',
         'Suspend:Async',
-        'RefCheckerOuter render',
-        'FunctionComponent render',
-        'RefCheckerInner:refObject render',
-        'FunctionComponent render',
-        'RefCheckerInner:refCallback render',
         'Text:Fallback render',
         'RefCheckerOuter destroy layout refObject? true refCallback? true',
         'RefCheckerInner:refObject destroy layout ref? false',
@@ -3138,7 +3082,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
       assertLog([
         'App render',
         'Suspend:Async',
-        'RefChecker render',
         'Text:Fallback render',
         'RefChecker destroy layout ref? true',
         'Text:Fallback create layout',
@@ -3252,8 +3195,6 @@ describe('ReactSuspenseEffectsSemantics', () => {
           'ErrorBoundary render: try',
           'App render',
           'Suspend:Async',
-          'ThrowsInRefCallback render',
-          'Text:Inside render',
           'Text:Fallback render',
           'Text:Outside render',
           'ThrowsInRefCallback refCallback ref? false',

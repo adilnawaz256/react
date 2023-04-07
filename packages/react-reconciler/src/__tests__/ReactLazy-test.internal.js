@@ -5,6 +5,7 @@ let Scheduler;
 let ReactFeatureFlags;
 let Suspense;
 let lazy;
+let waitFor;
 let waitForAll;
 let waitForThrow;
 let assertLog;
@@ -34,6 +35,7 @@ describe('ReactLazy', () => {
     Scheduler = require('scheduler');
 
     const InternalTestUtils = require('internal-test-utils');
+    waitFor = InternalTestUtils.waitFor;
     waitForAll = InternalTestUtils.waitForAll;
     waitForThrow = InternalTestUtils.waitForThrow;
     assertLog = InternalTestUtils.assertLog;
@@ -256,8 +258,14 @@ describe('ReactLazy', () => {
       }
     }
 
-    const LazyChildA = lazy(() => fakeImport(Child));
-    const LazyChildB = lazy(() => fakeImport(Child));
+    const LazyChildA = lazy(() => {
+      Scheduler.log('Suspend! [LazyChildA]');
+      return fakeImport(Child);
+    });
+    const LazyChildB = lazy(() => {
+      Scheduler.log('Suspend! [LazyChildB]');
+      return fakeImport(Child);
+    });
 
     function Parent({swap}) {
       return (
@@ -279,10 +287,15 @@ describe('ReactLazy', () => {
       unstable_isConcurrent: true,
     });
 
-    await waitForAll(['Loading...']);
+    await waitForAll(['Suspend! [LazyChildA]', 'Loading...']);
     expect(root).not.toMatchRenderedOutput('AB');
 
     await resolveFakeImport(Child);
+
+    // B suspends even though it happens to share the same import as A.
+    // TODO: React.lazy should implement the `status` and `value` fields, so
+    // we can unwrap the result synchronously if it already loaded. Like `use`.
+    await waitFor(['A', 'Suspend! [LazyChildB]']);
 
     await waitForAll(['A', 'B', 'Did mount: A', 'Did mount: B']);
     expect(root).toMatchRenderedOutput('AB');
@@ -1389,12 +1402,13 @@ describe('ReactLazy', () => {
       unstable_isConcurrent: true,
     });
 
-    await waitForAll(['Init A', 'Init B', 'Loading...']);
+    await waitForAll(['Init A', 'Loading...']);
     expect(root).not.toMatchRenderedOutput('AB');
 
     await resolveFakeImport(ChildA);
-    await resolveFakeImport(ChildB);
+    await waitForAll(['A', 'Init B']);
 
+    await resolveFakeImport(ChildB);
     await waitForAll(['A', 'B', 'Did mount: A', 'Did mount: B']);
     expect(root).toMatchRenderedOutput('AB');
 
@@ -1545,9 +1559,13 @@ describe('ReactLazy', () => {
     expect(root).toMatchRenderedOutput('AB');
 
     // Swap the position of A and B
-    React.startTransition(() => {
+    if (gate(flags => flags.enableSyncDefaultUpdates)) {
+      React.startTransition(() => {
+        root.update(<Parent swap={true} />);
+      });
+    } else {
       root.update(<Parent swap={true} />);
-    });
+    }
     await waitForAll(['Init B2', 'Loading...']);
     await resolveFakeImport(ChildB2);
     // We need to flush to trigger the second one to load.

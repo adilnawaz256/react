@@ -352,7 +352,7 @@ describe('ReactUse', () => {
         root.render(<App />);
       });
     });
-    assertLog(['CD', 'Loading...']);
+    assertLog(['Loading...']);
     expect(root).toMatchRenderedOutput('Loading...');
   });
 
@@ -1034,26 +1034,19 @@ describe('ReactUse', () => {
         </Suspense>,
       );
     });
-    assertLog([
-      'Async text requested [A]',
-      'Async text requested [B]',
-      'Async text requested [C]',
-      '(Loading C...)',
-      '(Loading B...)',
-      '(Loading A...)',
-    ]);
+    assertLog(['Async text requested [A]', '(Loading A...)']);
     expect(root).toMatchRenderedOutput('(Loading A...)');
 
     await act(() => {
       resolveTextRequests('A');
     });
-    assertLog(['A', '(Loading C...)', '(Loading B...)']);
+    assertLog(['A', 'Async text requested [B]', '(Loading B...)']);
     expect(root).toMatchRenderedOutput('A(Loading B...)');
 
     await act(() => {
       resolveTextRequests('B');
     });
-    assertLog(['B', '(Loading C...)']);
+    assertLog(['B', 'Async text requested [C]', '(Loading C...)']);
     expect(root).toMatchRenderedOutput('AB(Loading C...)');
 
     await act(() => {
@@ -1087,14 +1080,7 @@ describe('ReactUse', () => {
         </Suspense>,
       );
     });
-    assertLog([
-      'Async text requested [A]',
-      'Async text requested [B]',
-      'Async text requested [C]',
-      '(Loading C...)',
-      '(Loading B...)',
-      '(Loading A...)',
-    ]);
+    assertLog(['Async text requested [A]', '(Loading A...)']);
     expect(root).toMatchRenderedOutput('(Loading A...)');
 
     await act(() => {
@@ -1116,8 +1102,6 @@ describe('ReactUse', () => {
       // React does not suspend on the inner requests, because that would
       // block A from appearing. Instead it shows a fallback.
       'Async text requested [B]',
-      'Async text requested [C]',
-      '(Loading C...)',
       '(Loading B...)',
     ]);
     expect(root).toMatchRenderedOutput('A(Loading B...)');
@@ -1487,5 +1471,133 @@ describe('ReactUse', () => {
     });
     assertLog(['Hi']);
     expect(root).toMatchRenderedOutput('Hi');
+  });
+
+  test('unwrap uncached promises inside forwardRef', async () => {
+    const asyncInstance = {};
+    const Async = React.forwardRef((props, ref) => {
+      React.useImperativeHandle(ref, () => asyncInstance);
+      const text = use(Promise.resolve('Async'));
+      return <Text text={text} />;
+    });
+
+    const ref = React.createRef();
+    function App() {
+      return (
+        <Suspense fallback={<Text text="Loading..." />}>
+          <Async ref={ref} />
+        </Suspense>
+      );
+    }
+
+    const root = ReactNoop.createRoot();
+    await act(() => {
+      startTransition(() => {
+        root.render(<App />);
+      });
+    });
+    assertLog(['Async']);
+    expect(root).toMatchRenderedOutput('Async');
+    expect(ref.current).toBe(asyncInstance);
+  });
+
+  test('unwrap uncached promises inside memo', async () => {
+    const Async = React.memo(
+      props => {
+        const text = use(Promise.resolve(props.text));
+        return <Text text={text} />;
+      },
+      (a, b) => a.text === b.text,
+    );
+
+    function App({text}) {
+      return (
+        <Suspense fallback={<Text text="Loading..." />}>
+          <Async text={text} />
+        </Suspense>
+      );
+    }
+
+    const root = ReactNoop.createRoot();
+    await act(() => {
+      startTransition(() => {
+        root.render(<App text="Async" />);
+      });
+    });
+    assertLog(['Async']);
+    expect(root).toMatchRenderedOutput('Async');
+
+    // Update to the same value
+    await act(() => {
+      startTransition(() => {
+        root.render(<App text="Async" />);
+      });
+    });
+    // Should not have re-rendered, because it's memoized
+    assertLog([]);
+    expect(root).toMatchRenderedOutput('Async');
+
+    // Update to a different value
+    await act(() => {
+      startTransition(() => {
+        root.render(<App text="Async!" />);
+      });
+    });
+    assertLog(['Async!']);
+    expect(root).toMatchRenderedOutput('Async!');
+  });
+
+  // @gate !disableLegacyContext
+  test('unwrap uncached promises in component that accesses legacy context', async () => {
+    class ContextProvider extends React.Component {
+      static childContextTypes = {
+        legacyContext() {},
+      };
+      getChildContext() {
+        return {legacyContext: 'Async'};
+      }
+      render() {
+        return this.props.children;
+      }
+    }
+
+    function Async({label}, context) {
+      const text = use(Promise.resolve(context.legacyContext + ` (${label})`));
+      return <Text text={text} />;
+    }
+    Async.contextTypes = {
+      legacyContext: () => {},
+    };
+
+    const AsyncMemo = React.memo(Async, (a, b) => a.label === b.label);
+
+    function App() {
+      return (
+        <ContextProvider>
+          <Suspense fallback={<Text text="Loading..." />}>
+            <div>
+              <Async label="function component" />
+            </div>
+            <div>
+              <AsyncMemo label="memo component" />
+            </div>
+          </Suspense>
+        </ContextProvider>
+      );
+    }
+
+    const root = ReactNoop.createRoot();
+    await act(() => {
+      startTransition(() => {
+        root.render(<App />);
+      });
+    });
+    assertLog(['Async (function component)', 'Async (memo component)']);
+    expect(root).toMatchRenderedOutput(
+      <>
+        <div>Async (function component)</div>
+        <div>Async (memo component)</div>
+      </>,
+    );
   });
 });
